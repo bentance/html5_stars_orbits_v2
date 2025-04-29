@@ -39,24 +39,29 @@
             border-radius: 8px;
             z-index: 100;
         }
-        #time-slider {
+        /* Common styles for sliders */
+        .slider-vertical {
             writing-mode: bt-lr;
             -webkit-appearance: slider-vertical;
             appearance: slider-vertical;
             width: 8px;
-            height: 150px;
+            height: 120px; /* Adjusted height */
             cursor: pointer;
             margin-top: 10px;
+            margin-bottom: 10px; /* Add some bottom margin */
         }
-        #slider-label {
+         /* Common styles for labels */
+        .slider-label {
             color: white;
             font-size: 12px;
             margin-bottom: 5px;
+            margin-top: 10px; /* Add margin above labels */
         }
-        #speed-value {
+        /* Common styles for value displays */
+        .speed-value {
             color: white;
             font-size: 12px;
-            margin-top: 10px;
+            margin-top: 5px; /* Adjust margin */
             min-width: 30px;
             text-align: center;
         }
@@ -80,12 +85,17 @@
     </style>
 </head>
 <body>
-    <div id="info">Hierarchical Multi-Star System | Left-click drag: Rotate | Right-click drag: Pan | Scroll: Zoom | Use slider/button for speed/pause</div>
+    <div id="info">Hierarchical Multi-Star System | Left-click drag: Rotate | Right-click drag: Pan | Scroll: Zoom | Use sliders/button</div>
 
     <div id="controls-container">
-        <label id="slider-label" for="time-slider">Speed</label>
-        <input type="range" id="time-slider" min="0" max="100" value="50">
-        <span id="speed-value">50</span>
+        <label id="slider-label-speed" class="slider-label" for="time-slider">Speed</label>
+        <input type="range" id="time-slider" class="slider-vertical" min="0" max="100" value="50">
+        <span id="speed-value" class="speed-value">50</span>
+
+        <label id="slider-label-frequency" class="slider-label" for="frequency-slider">Shooting Stars</label>
+        <input type="range" id="frequency-slider" class="slider-vertical" min="0" max="100" value="20">
+        <span id="frequency-value" class="speed-value">20</span>
+
         <button id="pause-button">Pause</button>
     </div>
 
@@ -94,99 +104,64 @@
     <script>
         let scene, camera, renderer, controls;
 
-        // --- Central System (Super Sun) ---
+        // --- Stars & Planets Data Structures (as before) ---
         let superSun, superSunLight;
-        let superSunPlanets = [];
-        let superSunPlanetOrbitLines = [];
-        let superSunPlanetAngles = [];
-        let superSunPlanetRadii = [150, 220, 300, 380, 470, 560];
-        let superSunPlanetSizes = [5, 6, 5.5, 7, 6.5, 8];
+        let superSunPlanets = []; let superSunPlanetOrbitLines = []; let superSunPlanetAngles = [];
+        let superSunPlanetRadii = [150, 220, 300, 380, 470, 560]; let superSunPlanetSizes = [5, 6, 5.5, 7, 6.5, 8];
         let superSunPlanetColors = [0xffa07a, 0xdda0dd, 0xf0e68c, 0xadd8e6, 0x98fb98, 0xff6347];
-        let baseSuperSunPlanetOrbitSpeeds = [5.0, 4.0, 3.0, 2.5, 2.0, 1.5];
-        let currentSuperSunPlanetOrbitSpeeds = [];
+        let baseSuperSunPlanetOrbitSpeeds = [5.0, 4.0, 3.0, 2.5, 2.0, 1.5]; let currentSuperSunPlanetOrbitSpeeds = [];
         let superSunPlanetInclinations = [];
 
-        // --- Orbiting Stars around Super Sun ---
-        let orbitingStars = [];
-        let orbitingStarLights = [];
-        let orbitingStarOrbitLines = [];
-        let orbitingStarAngles = [];
-        let orbitingStarRadii = [700, 1100, 1400];
-        let orbitingStarColors = [0xfff0f5, 0xf0ffff, 0xffebcd];
-        let baseOrbitingStarSpeeds = [0.75, 0.5, 0.35];
-        let currentOrbitingStarSpeeds = [];
+        let orbitingStars = []; let orbitingStarLights = []; let orbitingStarOrbitLines = []; let orbitingStarAngles = [];
+        let orbitingStarRadii = [700, 1100, 1400]; let orbitingStarColors = [0xfff0f5, 0xf0ffff, 0xffebcd];
+        let baseOrbitingStarSpeeds = [0.75, 0.5, 0.35]; let currentOrbitingStarSpeeds = [];
         let orbitingStarInclinations = [];
-        let orbitingStarPlanets = [[], [], []];
-        let orbitingStarPlanetOrbitLines = [[], [], []];
-        let orbitingStarPlanetAngles = [[], [], []];
-        let orbitingStarPlanetRadii = [[], [], []];
-        let orbitingStarPlanetSizes = [[], [], []];
-        let orbitingStarPlanetColors = [[], [], []];
-        let baseOrbitingStarPlanetOrbitSpeeds = [[], [], []];
-        let currentOrbitingStarPlanetOrbitSpeeds = [[], [], []];
+        let orbitingStarPlanets = [[], [], []]; let orbitingStarPlanetOrbitLines = [[], [], []]; let orbitingStarPlanetAngles = [[], [], []];
+        let orbitingStarPlanetRadii = [[], [], []]; let orbitingStarPlanetSizes = [[], [], []]; let orbitingStarPlanetColors = [[], [], []];
+        let baseOrbitingStarPlanetOrbitSpeeds = [[], [], []]; let currentOrbitingStarPlanetOrbitSpeeds = [[], [], []];
         let orbitingStarPlanetInclinations = [[], [], []];
 
-        // --- Sub-System (Star A, B, C orbiting Super Sun) ---
-        let starA, starB, starC;
-        let starALight, starBLight, starCLight;
-        let starAPlanets = [];
-        let starAPlanetOrbitLines = [];
-        let starAPlanetAngles = [];
-        let starAPlanetRadii = [80, 120, 170, 220, 280, 340];
-        let starAPlanetSizes = [3, 4, 3.5, 5, 4.5, 6];
+        let starA, starB, starC; let starALight, starBLight, starCLight;
+        let starAPlanets = []; let starAPlanetOrbitLines = []; let starAPlanetAngles = [];
+        let starAPlanetRadii = [80, 120, 170, 220, 280, 340]; let starAPlanetSizes = [3, 4, 3.5, 5, 4.5, 6];
         let starAPlanetColors = [0x87CEEB, 0x90EE90, 0xFFB6C1, 0xFFE4B5, 0xAFEEEE, 0x9370DB];
-        let baseStarAPlanetOrbitSpeeds = [20.0, 15.0, 12.5, 10.0, 7.5, 6.0];
-        let currentStarAPlanetOrbitSpeeds = [];
+        let baseStarAPlanetOrbitSpeeds = [20.0, 15.0, 12.5, 10.0, 7.5, 6.0]; let currentStarAPlanetOrbitSpeeds = [];
         let starAPlanetInclinations = [];
 
-        // Binary Star System within Sub-System
-        let starBOrbitLine, starCOrbitLine;
-        const binaryStarSeparation = 40;
-        const binaryInternalInclination = { x: 0, y: 0 };
+        let starBOrbitLine, starCOrbitLine; const binaryStarSeparation = 40; const binaryInternalInclination = { x: 0, y: 0 };
+        let subSystemOrbitLine; const subSystemOrbitRadius = 900; const subSystemInclination = { x: 0, y: 0 };
+        let subSystemAngle = 0; let baseSubSystemOrbitSpeed = 1.0; let currentSubSystemOrbitSpeed;
+        let baseBinaryInternalOrbitSpeed = 5.0; let currentBinaryInternalOrbitSpeed; let binaryInternalAngle = 0;
 
-        // Sub-System Orbit around Super Sun
-        let subSystemOrbitLine;
-        const subSystemOrbitRadius = 900;
-        const subSystemInclination = { x: 0, y: 0 };
-        let subSystemAngle = 0;
-        let baseSubSystemOrbitSpeed = 1.0;
-        let currentSubSystemOrbitSpeed;
-
-        // Binary System Orbit (B/C around their center)
-        let baseBinaryInternalOrbitSpeed = 5.0;
-        let currentBinaryInternalOrbitSpeed;
-        let binaryInternalAngle = 0;
+        // --- Shooting Star Variables ---
+        let shootingStarSystem;
+        let shootingStarGeometry;
+        let shootingStarMaterial;
+        const maxShootingStars = 500;
+        let shootingStarPool = [];
+        let shootingStarFrequency = 0.002; // Initial base probability
+        let frequencySlider, frequencyValueDisplay;
 
         // Controls
         let timeSlider, speedValueDisplay, pauseButton;
         let isPaused = false;
         let speedBeforePause = 50;
 
-        // Helpers for 3D rotation
+        // Helpers
         const xAxis = new THREE.Vector3(1, 0, 0);
         const yAxis = new THREE.Vector3(0, 1, 0);
 
         // Initialize the scene
         function init() {
-            // Create scene with twilight gradient background
             scene = new THREE.Scene();
-
-            // Create gradient canvas
+            // Background gradient setup
             const gradientCanvas = document.createElement('canvas');
-            gradientCanvas.width = 32;
-            gradientCanvas.height = 128;
+            gradientCanvas.width = 32; gradientCanvas.height = 128;
             const context = gradientCanvas.getContext('2d');
-
-            // *** Create DARKER twilight gradient ***
             const gradient = context.createLinearGradient(0, 0, 0, gradientCanvas.height);
-            gradient.addColorStop(0, '#2c003e');    // Dark Purple/Indigo
-            gradient.addColorStop(0.5, '#8B4513'); // Saddle Brown transition
-            gradient.addColorStop(1, '#DAA520');    // Goldenrod (Darker Yellow)
-
-            context.fillStyle = gradient;
-            context.fillRect(0, 0, gradientCanvas.width, gradientCanvas.height);
-
-            scene.background = new THREE.CanvasTexture(gradientCanvas); // Use the gradient canvas texture
+            gradient.addColorStop(0, '#2c003e'); gradient.addColorStop(0.5, '#8B4513'); gradient.addColorStop(1, '#DAA520');
+            context.fillStyle = gradient; context.fillRect(0, 0, gradientCanvas.width, gradientCanvas.height);
+            scene.background = new THREE.CanvasTexture(gradientCanvas);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 15000);
             camera.position.set(0, 800, 2000);
@@ -199,442 +174,244 @@
             renderer.physicallyCorrectLights = false;
             document.body.appendChild(renderer.domElement);
 
-            // Randomize inclinations
-            function getRandomInclination() {
-                const maxInclination = Math.PI / 3;
-                return {
-                    x: (Math.random() - 0.5) * 2 * maxInclination,
-                    y: (Math.random() - 0.5) * 2 * maxInclination
-                };
-            }
-
-            Object.assign(subSystemInclination, getRandomInclination());
-            Object.assign(binaryInternalInclination, getRandomInclination());
-
-            for (let i = 0; i < 6; i++) {
-                superSunPlanetInclinations.push(getRandomInclination());
-                starAPlanetInclinations.push(getRandomInclination());
-            }
-
-            for (let i = 0; i < 3; i++) {
-                orbitingStarInclinations.push(getRandomInclination());
-                const numPlanets = Math.floor(Math.random() * 11) + 10;
-                for (let j = 0; j < numPlanets; j++) {
-                    orbitingStarPlanetInclinations[i].push(getRandomInclination());
-                }
-            }
+            // Randomize Inclinations
+            function getRandomInclination() { const maxInclination = Math.PI / 3; return { x: (Math.random() - 0.5) * 2 * maxInclination, y: (Math.random() - 0.5) * 2 * maxInclination }; }
+            Object.assign(subSystemInclination, getRandomInclination()); Object.assign(binaryInternalInclination, getRandomInclination());
+            for (let i = 0; i < 6; i++) { superSunPlanetInclinations.push(getRandomInclination()); starAPlanetInclinations.push(getRandomInclination()); }
+            for (let i = 0; i < 3; i++) { orbitingStarInclinations.push(getRandomInclination()); const numPlanets = Math.floor(Math.random() * 11) + 10; for (let j = 0; j < numPlanets; j++) { orbitingStarPlanetInclinations[i].push(getRandomInclination()); } }
 
             // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-            scene.add(ambientLight);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambientLight);
+            superSunLight = new THREE.PointLight(0xffffff, 1.8, 15000, 1); superSunLight.position.set(0, 0, 0); superSunLight.castShadow = true; superSunLight.shadow.mapSize.width = 2048; superSunLight.shadow.mapSize.height = 2048; superSunLight.shadow.camera.near = 10; superSunLight.shadow.camera.far = 3500; superSunLight.shadow.bias = -0.001; scene.add(superSunLight);
+            starALight = new THREE.PointLight(0xffffee, 0.8, 2000, 1); scene.add(starALight); starBLight = new THREE.PointLight(0xffddcc, 0.6, 1000, 1); scene.add(starBLight); starCLight = new THREE.PointLight(0xccddff, 0.6, 1000, 1); scene.add(starCLight);
+            for (let i = 0; i < 3; i++) { const light = new THREE.PointLight(orbitingStarColors[i], 1.0, 3000, 1); orbitingStarLights.push(light); scene.add(light); }
 
-            superSunLight = new THREE.PointLight(0xffffff, 1.8, 15000, 1);
-            superSunLight.position.set(0, 0, 0);
-            superSunLight.castShadow = true;
-            superSunLight.shadow.mapSize.width = 2048;
-            superSunLight.shadow.mapSize.height = 2048;
-            superSunLight.shadow.camera.near = 10;
-            superSunLight.shadow.camera.far = 3500;
-            superSunLight.shadow.bias = -0.001;
-            scene.add(superSunLight);
-
-            // Sub-system star lights
-            starALight = new THREE.PointLight(0xffffee, 0.8, 2000, 1); scene.add(starALight);
-            starBLight = new THREE.PointLight(0xffddcc, 0.6, 1000, 1); scene.add(starBLight);
-            starCLight = new THREE.PointLight(0xccddff, 0.6, 1000, 1); scene.add(starCLight);
-
-            // Lights for orbiting stars
-            for (let i = 0; i < 3; i++) {
-                const light = new THREE.PointLight(orbitingStarColors[i], 1.0, 3000, 1);
-                orbitingStarLights.push(light);
-                scene.add(light);
-            }
-
-            // Create bodies & orbits
+            // Create Bodies & Orbits
             createSuperSunSystem();
             createSubSystem();
             createOrbitLines();
+            createShootingStars(); // Create shooting star system
 
             // Controls
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.screenSpacePanning = true;
-            controls.minDistance = 100;
-            controls.maxDistance = 6000;
+            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05; controls.screenSpacePanning = true; controls.minDistance = 100; controls.maxDistance = 6000;
 
             timeSlider = document.getElementById('time-slider');
             speedValueDisplay = document.getElementById('speed-value');
             pauseButton = document.getElementById('pause-button');
+            frequencySlider = document.getElementById('frequency-slider');
+            frequencyValueDisplay = document.getElementById('frequency-value');
+
             timeSlider.addEventListener('input', onSpeedChange);
             pauseButton.addEventListener('click', togglePause);
+            frequencySlider.addEventListener('input', onFrequencyChange); // Listener for frequency
 
             updateSpeeds(parseFloat(timeSlider.value));
             speedValueDisplay.textContent = timeSlider.value;
+            updateFrequency(parseFloat(frequencySlider.value)); // Initial frequency update
+            frequencyValueDisplay.textContent = frequencySlider.value;
             updatePauseButtonText();
 
             window.addEventListener('resize', onWindowResize, false);
         }
 
-        // Create Super Sun, its planets, and orbiting stars with their planets
-        function createSuperSunSystem() {
-            // Super Sun
-            const superSunGeometry = new THREE.SphereGeometry(60, 64, 64);
-            const superSunMaterial = new THREE.MeshBasicMaterial({ color: 0xFFF8DC });
-            superSun = new THREE.Mesh(superSunGeometry, superSunMaterial);
-            scene.add(superSun);
-
-            // Super Sun Planets
-            for (let i = 0; i < 6; i++) {
-                const geometry = new THREE.SphereGeometry(superSunPlanetSizes[i], 32, 32);
-                const material = new THREE.MeshStandardMaterial({ color: superSunPlanetColors[i], roughness: 0.7, metalness: 0.2 });
-                const planet = new THREE.Mesh(geometry, material);
-                planet.receiveShadow = true; planet.castShadow = false;
-                planet.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-                superSunPlanets.push(planet);
-                superSunPlanetAngles.push(Math.random() * Math.PI * 2);
-                scene.add(planet);
-            }
-
-            // Create Orbiting Stars and their Planets
-            for (let i = 0; i < 3; i++) {
-                // Create the star
-                const starGeometry = new THREE.SphereGeometry(60, 64, 64);
-                const starMaterial = new THREE.MeshBasicMaterial({ color: orbitingStarColors[i] });
-                const star = new THREE.Mesh(starGeometry, starMaterial);
-                star.add(orbitingStarLights[i]);
-                star.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-                orbitingStars.push(star);
-                orbitingStarAngles.push(Math.random() * Math.PI * 2);
-                scene.add(star);
-
-                // Create planets for this star
-                const numPlanets = orbitingStarPlanetInclinations[i].length;
-                let lastRadius = 0;
-                for (let j = 0; j < numPlanets; j++) {
-                    const planetSize = Math.random() * 4 + 1;
-                    const planetRadius = lastRadius + star.geometry.parameters.radius + 10 + Math.random() * 20;
-                    lastRadius = planetRadius;
-                    const planetColor = new THREE.Color(Math.random(), Math.random(), Math.random());
-                    const baseSpeed = (0.5 / Math.sqrt(planetRadius)) * 50;
-
-                    orbitingStarPlanetRadii[i].push(planetRadius);
-                    orbitingStarPlanetSizes[i].push(planetSize);
-                    orbitingStarPlanetColors[i].push(planetColor);
-                    baseOrbitingStarPlanetOrbitSpeeds[i].push(baseSpeed);
-                    currentOrbitingStarPlanetOrbitSpeeds[i].push(0);
-                    orbitingStarPlanetAngles[i].push(Math.random() * Math.PI * 2);
-
-                    // Create planet mesh
-                    const geometry = new THREE.SphereGeometry(planetSize, 16, 16);
-                    const material = new THREE.MeshStandardMaterial({ color: planetColor, roughness: 0.8, metalness: 0.1 });
-                    const planet = new THREE.Mesh(geometry, material);
-                    planet.receiveShadow = true; planet.castShadow = false;
-                    planet.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-                    orbitingStarPlanets[i].push(planet);
-                    scene.add(planet);
-                }
-            }
+        // Create Super Sun system
+        function createSuperSunSystem() { /* ... (no changes needed here) ... */
+            const superSunGeometry = new THREE.SphereGeometry(60, 64, 64); const superSunMaterial = new THREE.MeshBasicMaterial({ color: 0xFFF8DC }); superSun = new THREE.Mesh(superSunGeometry, superSunMaterial); scene.add(superSun);
+            for (let i = 0; i < 6; i++) { const geometry = new THREE.SphereGeometry(superSunPlanetSizes[i], 32, 32); const material = new THREE.MeshStandardMaterial({ color: superSunPlanetColors[i], roughness: 0.7, metalness: 0.2 }); const planet = new THREE.Mesh(geometry, material); planet.receiveShadow = true; planet.castShadow = false; planet.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2); superSunPlanets.push(planet); superSunPlanetAngles.push(Math.random() * Math.PI * 2); scene.add(planet); }
+            for (let i = 0; i < 3; i++) { const starGeometry = new THREE.SphereGeometry(60, 64, 64); const starMaterial = new THREE.MeshBasicMaterial({ color: orbitingStarColors[i] }); const star = new THREE.Mesh(starGeometry, starMaterial); star.add(orbitingStarLights[i]); star.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2); orbitingStars.push(star); orbitingStarAngles.push(Math.random() * Math.PI * 2); scene.add(star); const numPlanets = orbitingStarPlanetInclinations[i].length; let lastRadius = 0; for (let j = 0; j < numPlanets; j++) { const planetSize = Math.random() * 4 + 1; const planetRadius = lastRadius + star.geometry.parameters.radius + 10 + Math.random() * 20; lastRadius = planetRadius; const planetColor = new THREE.Color(Math.random(), Math.random(), Math.random()); const baseSpeed = (0.5 / Math.sqrt(planetRadius)) * 50; orbitingStarPlanetRadii[i].push(planetRadius); orbitingStarPlanetSizes[i].push(planetSize); orbitingStarPlanetColors[i].push(planetColor); baseOrbitingStarPlanetOrbitSpeeds[i].push(baseSpeed); currentOrbitingStarPlanetOrbitSpeeds[i].push(0); orbitingStarPlanetAngles[i].push(Math.random() * Math.PI * 2); const geometry = new THREE.SphereGeometry(planetSize, 16, 16); const material = new THREE.MeshStandardMaterial({ color: planetColor, roughness: 0.8, metalness: 0.1 }); const planet = new THREE.Mesh(geometry, material); planet.receiveShadow = true; planet.castShadow = false; planet.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2); orbitingStarPlanets[i].push(planet); scene.add(planet); } }
         }
 
-        // Create Star A, B, C and Star A's planets
-        function createSubSystem() {
-            const starAGeometry = new THREE.SphereGeometry(20, 64, 64);
-            const starAMaterial = new THREE.MeshBasicMaterial({ color: 0xffffcc });
-            starA = new THREE.Mesh(starAGeometry, starAMaterial);
-            starA.add(starALight);
-            scene.add(starA);
-
-            const starBGeometry = new THREE.SphereGeometry(18, 32, 32);
-            const starBMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa88 });
-            starB = new THREE.Mesh(starBGeometry, starBMaterial);
-            starB.add(starBLight);
-            scene.add(starB);
-
-            const starCGeometry = new THREE.SphereGeometry(16, 32, 32);
-            const starCMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaff });
-            starC = new THREE.Mesh(starCGeometry, starCMaterial);
-            starC.add(starCLight);
-            scene.add(starC);
-
-            for (let i = 0; i < 6; i++) {
-                const geometry = new THREE.SphereGeometry(starAPlanetSizes[i], 32, 32);
-                const material = new THREE.MeshStandardMaterial({ color: starAPlanetColors[i], roughness: 0.8, metalness: 0.1 });
-                const planet = new THREE.Mesh(geometry, material);
-                planet.receiveShadow = true; planet.castShadow = false;
-                planet.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-                starAPlanets.push(planet);
-                starAPlanetAngles.push(Math.random() * Math.PI * 2);
-                scene.add(planet);
-            }
+        // Create Sub-System
+        function createSubSystem() { /* ... (no changes needed here) ... */
+             const starAGeometry = new THREE.SphereGeometry(20, 64, 64); const starAMaterial = new THREE.MeshBasicMaterial({ color: 0xffffcc }); starA = new THREE.Mesh(starAGeometry, starAMaterial); starA.add(starALight); scene.add(starA);
+             const starBGeometry = new THREE.SphereGeometry(18, 32, 32); const starBMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa88 }); starB = new THREE.Mesh(starBGeometry, starBMaterial); starB.add(starBLight); scene.add(starB);
+             const starCGeometry = new THREE.SphereGeometry(16, 32, 32); const starCMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaff }); starC = new THREE.Mesh(starCGeometry, starCMaterial); starC.add(starCLight); scene.add(starC);
+             for (let i = 0; i < 6; i++) { const geometry = new THREE.SphereGeometry(starAPlanetSizes[i], 32, 32); const material = new THREE.MeshStandardMaterial({ color: starAPlanetColors[i], roughness: 0.8, metalness: 0.1 }); const planet = new THREE.Mesh(geometry, material); planet.receiveShadow = true; planet.castShadow = false; planet.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2); starAPlanets.push(planet); starAPlanetAngles.push(Math.random() * Math.PI * 2); scene.add(planet); }
         }
 
-        // Create all orbit lines and apply inclinations
-        function createOrbitLines() {
-            // *** Updated orbit line colors to light grey ***
-            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.1 }); // Light Grey, Very faint
-            const binaryLineMaterial = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.08 }); // Light Grey, Even fainter
-            const orbitingStarLineMaterial = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.15 }); // Light Grey, Slightly less faint
+        // Create Orbit Lines
+        function createOrbitLines() { /* ... (no changes needed here) ... */
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.1 }); const binaryLineMaterial = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.08 }); const orbitingStarLineMaterial = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.15 });
+            subSystemOrbitLine = createOrbitLine(subSystemOrbitRadius, 128, lineMaterial); applyInclination(subSystemOrbitLine, subSystemInclination); scene.add(subSystemOrbitLine);
+            const starBOrbitGeom = createOrbitLineGeometry(binaryStarSeparation, 64); starBOrbitLine = new THREE.Line(starBOrbitGeom, binaryLineMaterial); applyInclination(starBOrbitLine, binaryInternalInclination); scene.add(starBOrbitLine); const starCOrbitGeom = createOrbitLineGeometry(binaryStarSeparation, 64); starCOrbitLine = new THREE.Line(starCOrbitGeom, binaryLineMaterial); applyInclination(starCOrbitLine, binaryInternalInclination); scene.add(starCOrbitLine);
+            for (let i = 0; i < 6; i++) { const planetOrbit = createOrbitLine(superSunPlanetRadii[i], 128, lineMaterial); applyInclination(planetOrbit, superSunPlanetInclinations[i]); superSunPlanetOrbitLines.push(planetOrbit); scene.add(planetOrbit); }
+            for (let i = 0; i < 6; i++) { const planetOrbit = createOrbitLine(starAPlanetRadii[i], 128, lineMaterial); applyInclination(planetOrbit, starAPlanetInclinations[i]); starAPlanetOrbitLines.push(planetOrbit); scene.add(planetOrbit); }
+            for (let i = 0; i < 3; i++) { const starOrbit = createOrbitLine(orbitingStarRadii[i], 128, orbitingStarLineMaterial); applyInclination(starOrbit, orbitingStarInclinations[i]); orbitingStarOrbitLines.push(starOrbit); scene.add(starOrbit); for (let j = 0; j < orbitingStarPlanets[i].length; j++) { const planetOrbit = createOrbitLine(orbitingStarPlanetRadii[i][j], 64, lineMaterial); applyInclination(planetOrbit, orbitingStarPlanetInclinations[i][j]); orbitingStarPlanetOrbitLines[i].push(planetOrbit); scene.add(planetOrbit); } }
+        }
 
-            // Sub-System's orbit around Super Sun
-            subSystemOrbitLine = createOrbitLine(subSystemOrbitRadius, 128, lineMaterial);
-            applyInclination(subSystemOrbitLine, subSystemInclination);
-            scene.add(subSystemOrbitLine);
+        // Create Shooting Star System
+        function createShootingStars() {
+            shootingStarGeometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const alphas = [];
+            const sizes = [];
 
-            // Star B & C orbits around binary center
-            const starBOrbitGeom = createOrbitLineGeometry(binaryStarSeparation, 64);
-            starBOrbitLine = new THREE.Line(starBOrbitGeom, binaryLineMaterial);
-            applyInclination(starBOrbitLine, binaryInternalInclination);
-            scene.add(starBOrbitLine);
+            for (let i = 0; i < maxShootingStars; i++) {
+                positions.push(0, 0, 0);
+                colors.push(1, 1, 1);
+                alphas.push(0.0);
+                sizes.push(0.0); // Initialize size
 
-            const starCOrbitGeom = createOrbitLineGeometry(binaryStarSeparation, 64);
-            starCOrbitLine = new THREE.Line(starCOrbitGeom, binaryLineMaterial);
-            applyInclination(starCOrbitLine, binaryInternalInclination);
-            scene.add(starCOrbitLine);
-
-            // Super Sun Planets' orbits
-            for (let i = 0; i < 6; i++) {
-                const planetOrbit = createOrbitLine(superSunPlanetRadii[i], 128, lineMaterial);
-                applyInclination(planetOrbit, superSunPlanetInclinations[i]);
-                superSunPlanetOrbitLines.push(planetOrbit);
-                scene.add(planetOrbit);
+                shootingStarPool.push({
+                    active: false,
+                    position: new THREE.Vector3(),
+                    velocity: new THREE.Vector3(),
+                    lifetime: 0,
+                    maxLifetime: Math.random() * 2 + 1
+                });
             }
 
-            // Star A Planets' orbits
-            for (let i = 0; i < 6; i++) {
-                const planetOrbit = createOrbitLine(starAPlanetRadii[i], 128, lineMaterial);
-                applyInclination(planetOrbit, starAPlanetInclinations[i]);
-                starAPlanetOrbitLines.push(planetOrbit);
-                scene.add(planetOrbit);
-            }
+            shootingStarGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            shootingStarGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            shootingStarGeometry.setAttribute('alpha', new THREE.Float32BufferAttribute(alphas, 1));
+            shootingStarGeometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1)); // Add size attribute
 
-            // Orbiting Stars' orbits around Super Sun
-            for (let i = 0; i < 3; i++) {
-                const starOrbit = createOrbitLine(orbitingStarRadii[i], 128, orbitingStarLineMaterial);
-                applyInclination(starOrbit, orbitingStarInclinations[i]);
-                orbitingStarOrbitLines.push(starOrbit);
-                scene.add(starOrbit);
 
-                // Create orbit lines for planets orbiting the orbiting stars
-                for (let j = 0; j < orbitingStarPlanets[i].length; j++) {
-                     const planetOrbit = createOrbitLine(orbitingStarPlanetRadii[i][j], 64, lineMaterial);
-                     applyInclination(planetOrbit, orbitingStarPlanetInclinations[i][j]);
-                     orbitingStarPlanetOrbitLines[i].push(planetOrbit);
-                     scene.add(planetOrbit);
-                }
-            }
+            shootingStarMaterial = new THREE.PointsMaterial({
+                vertexColors: true,
+                transparent: true,
+                opacity: 1.0,
+                sizeAttenuation: true, // Size still attenuates with distance
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+
+            shootingStarSystem = new THREE.Points(shootingStarGeometry, shootingStarMaterial);
+            shootingStarSystem.renderOrder = 999;
+            scene.add(shootingStarSystem);
         }
 
-        // Helper to apply inclination rotations (around X then Y)
-        function applyInclination(object, inclination) {
-            object.rotation.set(inclination.x, inclination.y, 0);
-        }
+        // Helper: Apply inclination rotation
+        function applyInclination(object, inclination) { object.rotation.set(inclination.x, inclination.y, 0); }
+        // Helper: Apply inclination to vector
+        function applyInclinationToVector(vector, inclination) { vector.applyAxisAngle(xAxis, inclination.x); vector.applyAxisAngle(yAxis, inclination.y); return vector; }
+        // Helper: Create orbit line geometry
+        function createOrbitLineGeometry(radius, segments) { const points = []; for (let i = 0; i <= segments; i++) { const theta = (i / segments) * Math.PI * 2; points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius)); } return new THREE.BufferGeometry().setFromPoints(points); }
+        // Helper: Create orbit line mesh
+        function createOrbitLine(radius, segments, material) { const geometry = createOrbitLineGeometry(radius, segments); return new THREE.Line(geometry, material); }
 
-        // Helper to apply inclination to a position vector
-        function applyInclinationToVector(vector, inclination) {
-            vector.applyAxisAngle(xAxis, inclination.x);
-            vector.applyAxisAngle(yAxis, inclination.y);
-            return vector;
+        // Update all current orbital speeds
+        function updateSpeeds(sliderValue) { /* ... (no changes needed here) ... */
+            const speedFactor = sliderValue / 100; currentSubSystemOrbitSpeed = baseSubSystemOrbitSpeed * speedFactor; currentBinaryInternalOrbitSpeed = baseBinaryInternalOrbitSpeed * speedFactor; for (let i = 0; i < 6; i++) { currentSuperSunPlanetOrbitSpeeds[i] = baseSuperSunPlanetOrbitSpeeds[i] * speedFactor; currentStarAPlanetOrbitSpeeds[i] = baseStarAPlanetOrbitSpeeds[i] * speedFactor; } for (let i = 0; i < 3; i++) { currentOrbitingStarSpeeds[i] = baseOrbitingStarSpeeds[i] * speedFactor; for (let j = 0; j < baseOrbitingStarPlanetOrbitSpeeds[i].length; j++) { currentOrbitingStarPlanetOrbitSpeeds[i][j] = baseOrbitingStarPlanetOrbitSpeeds[i][j] * speedFactor; } }
         }
-
-        // Helper to create orbit line geometry
-        function createOrbitLineGeometry(radius, segments) {
-             const points = [];
-             for (let i = 0; i <= segments; i++) {
-                 const theta = (i / segments) * Math.PI * 2;
-                 points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
-             }
-             return new THREE.BufferGeometry().setFromPoints(points);
-        }
-
-        // Helper to create a complete orbit line mesh
-        function createOrbitLine(radius, segments, material) {
-            const geometry = createOrbitLineGeometry(radius, segments);
-            return new THREE.Line(geometry, material);
-        }
-
-        // Update all current speeds based on slider value (0-100)
-        function updateSpeeds(sliderValue) {
-            const speedFactor = sliderValue / 100;
-            currentSubSystemOrbitSpeed = baseSubSystemOrbitSpeed * speedFactor;
-            currentBinaryInternalOrbitSpeed = baseBinaryInternalOrbitSpeed * speedFactor;
-            // Planets around Super Sun & Star A
-            for (let i = 0; i < 6; i++) {
-                currentSuperSunPlanetOrbitSpeeds[i] = baseSuperSunPlanetOrbitSpeeds[i] * speedFactor;
-                currentStarAPlanetOrbitSpeeds[i] = baseStarAPlanetOrbitSpeeds[i] * speedFactor;
-            }
-            // Orbiting Stars & their planets
-            for (let i = 0; i < 3; i++) {
-                currentOrbitingStarSpeeds[i] = baseOrbitingStarSpeeds[i] * speedFactor;
-                 for (let j = 0; j < baseOrbitingStarPlanetOrbitSpeeds[i].length; j++) {
-                     currentOrbitingStarPlanetOrbitSpeeds[i][j] = baseOrbitingStarPlanetOrbitSpeeds[i][j] * speedFactor;
-                 }
-            }
-        }
-
         // Handle speed slider changes
-        function onSpeedChange() {
-            const sliderValue = parseFloat(timeSlider.value);
-            updateSpeeds(sliderValue);
-            speedValueDisplay.textContent = sliderValue.toFixed(0);
+        function onSpeedChange() { /* ... (no changes needed here) ... */
+            const sliderValue = parseFloat(timeSlider.value); updateSpeeds(sliderValue); speedValueDisplay.textContent = sliderValue.toFixed(0); if (sliderValue > 0 && isPaused) { isPaused = false; speedBeforePause = sliderValue; updatePauseButtonText(); } else if (sliderValue === 0 && !isPaused) { isPaused = true; speedBeforePause = 1; updatePauseButtonText(); } else if (sliderValue > 0 && !isPaused) { speedBeforePause = sliderValue; }
+        }
 
-            if (sliderValue > 0 && isPaused) {
-                isPaused = false;
-                speedBeforePause = sliderValue;
-                updatePauseButtonText();
-            } else if (sliderValue === 0 && !isPaused) {
-                 isPaused = true;
-                 speedBeforePause = 1;
-                 updatePauseButtonText();
-            } else if (sliderValue > 0 && !isPaused) {
-                 speedBeforePause = sliderValue;
-            }
+        // Handle Frequency Slider Changes
+        function onFrequencyChange() {
+            const sliderValue = parseFloat(frequencySlider.value);
+            updateFrequency(sliderValue);
+            frequencyValueDisplay.textContent = sliderValue.toFixed(0);
+        }
+
+        // Update Frequency Variable
+        function updateFrequency(sliderValue) {
+             shootingStarFrequency = (sliderValue / 100) * 0.5; // Max probability 0.5 per frame
         }
 
         // Toggle pause state
-        function togglePause() {
-            isPaused = !isPaused;
-            if (isPaused) {
-                if (parseFloat(timeSlider.value) > 0) {
-                    speedBeforePause = parseFloat(timeSlider.value);
-                } else {
-                    speedBeforePause = 1;
-                }
-                timeSlider.value = 0;
-                updateSpeeds(0);
-                speedValueDisplay.textContent = '0';
-            } else {
-                timeSlider.value = speedBeforePause;
-                updateSpeeds(speedBeforePause);
-                speedValueDisplay.textContent = speedBeforePause.toFixed(0);
-            }
-            updatePauseButtonText();
+        function togglePause() { /* ... (no changes needed here) ... */
+            isPaused = !isPaused; if (isPaused) { if (parseFloat(timeSlider.value) > 0) { speedBeforePause = parseFloat(timeSlider.value); } else { speedBeforePause = 1; } timeSlider.value = 0; updateSpeeds(0); speedValueDisplay.textContent = '0'; } else { timeSlider.value = speedBeforePause; updateSpeeds(speedBeforePause); speedValueDisplay.textContent = speedBeforePause.toFixed(0); } updatePauseButtonText();
         }
-
-        // Update pause button text based on state
-        function updatePauseButtonText() {
-            pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
-        }
-
-        // Handle window resize events
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
+        // Update pause button text
+        function updatePauseButtonText() { pauseButton.textContent = isPaused ? 'Resume' : 'Pause'; }
+        // Handle window resize
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
 
         let lastTimestamp = 0;
         // Animation loop
         function animate(timestamp) {
             requestAnimationFrame(animate);
 
-            if (lastTimestamp === 0) {
-                lastTimestamp = timestamp;
-                return;
-            }
+            if (lastTimestamp === 0) { lastTimestamp = timestamp; return; }
             const deltaTime = (timestamp - lastTimestamp) * 0.001;
             lastTimestamp = timestamp;
 
-            // Update angles using current speeds (which are 0 if paused)
-            if (deltaTime > 0) {
-                 subSystemAngle += currentSubSystemOrbitSpeed * deltaTime;
-                 binaryInternalAngle += currentBinaryInternalOrbitSpeed * deltaTime;
-                 // Planets around Super Sun & Star A
-                 for(let i=0; i<6; i++) {
-                     superSunPlanetAngles[i] += currentSuperSunPlanetOrbitSpeeds[i] * deltaTime;
-                     starAPlanetAngles[i] += currentStarAPlanetOrbitSpeeds[i] * deltaTime;
-                 }
-                 // Orbiting Stars & their planets
-                 for(let i=0; i<3; i++) {
-                     orbitingStarAngles[i] += currentOrbitingStarSpeeds[i] * deltaTime;
-                     for (let j = 0; j < orbitingStarPlanetAngles[i].length; j++) {
-                         orbitingStarPlanetAngles[i][j] += currentOrbitingStarPlanetOrbitSpeeds[i][j] * deltaTime;
-                     }
-                 }
+            // Update orbital angles (if not paused)
+            if (!isPaused && deltaTime > 0) { /* ... (no changes needed here) ... */
+                 subSystemAngle += currentSubSystemOrbitSpeed * deltaTime; binaryInternalAngle += currentBinaryInternalOrbitSpeed * deltaTime; for(let i=0; i<6; i++) { superSunPlanetAngles[i] += currentSuperSunPlanetOrbitSpeeds[i] * deltaTime; starAPlanetAngles[i] += currentStarAPlanetOrbitSpeeds[i] * deltaTime; } for(let i=0; i<3; i++) { orbitingStarAngles[i] += currentOrbitingStarSpeeds[i] * deltaTime; for (let j = 0; j < orbitingStarPlanetAngles[i].length; j++) { orbitingStarPlanetAngles[i][j] += currentOrbitingStarPlanetOrbitSpeeds[i][j] * deltaTime; } }
             }
 
-            // --- Calculate 3D Positions ---
+            // Calculate 3D Positions (as before)
+             // 1. Sub-System Center (Star A)
+             const subSystemCenter2D_X = Math.cos(subSystemAngle) * subSystemOrbitRadius; const subSystemCenter2D_Z = Math.sin(subSystemAngle) * subSystemOrbitRadius; const subSystemCenterPos = new THREE.Vector3(subSystemCenter2D_X, 0, subSystemCenter2D_Z); applyInclinationToVector(subSystemCenterPos, subSystemInclination); starA.position.copy(subSystemCenterPos);
+             // 2. Star B/C relative positions
+             const starB_Rel_2D_X = Math.cos(binaryInternalAngle) * binaryStarSeparation; const starB_Rel_2D_Z = Math.sin(binaryInternalAngle) * binaryStarSeparation; const starB_RelPos = new THREE.Vector3(starB_Rel_2D_X, 0, starB_Rel_2D_Z); applyInclinationToVector(starB_RelPos, binaryInternalInclination); const starC_RelPos = starB_RelPos.clone().negate();
+             // 3. Final Star B/C positions
+             starB.position.copy(starA.position).add(starB_RelPos); starC.position.copy(starA.position).add(starC_RelPos);
+             // 4. Update Binary Star Orbit Lines position
+             starBOrbitLine.position.copy(starA.position); starCOrbitLine.position.copy(starA.position);
+             // 5. Update Super Sun Planet positions
+             for (let i = 0; i < 6; i++) { const planet2D_X = Math.cos(superSunPlanetAngles[i]) * superSunPlanetRadii[i]; const planet2D_Z = Math.sin(superSunPlanetAngles[i]) * superSunPlanetRadii[i]; const planetPos = new THREE.Vector3(planet2D_X, 0, planet2D_Z); applyInclinationToVector(planetPos, superSunPlanetInclinations[i]); superSunPlanets[i].position.copy(planetPos); }
+             // 6. Update Star A Planet positions
+             for (let i = 0; i < 6; i++) { const planet2D_X = Math.cos(starAPlanetAngles[i]) * starAPlanetRadii[i]; const planet2D_Z = Math.sin(starAPlanetAngles[i]) * starAPlanetRadii[i]; const planetRelPos = new THREE.Vector3(planet2D_X, 0, planet2D_Z); applyInclinationToVector(planetRelPos, starAPlanetInclinations[i]); starAPlanets[i].position.copy(starA.position).add(planetRelPos); starAPlanetOrbitLines[i].position.copy(starA.position); }
+             // 7. Update Orbiting Star positions
+             for (let i = 0; i < 3; i++) { const star2D_X = Math.cos(orbitingStarAngles[i]) * orbitingStarRadii[i]; const star2D_Z = Math.sin(orbitingStarAngles[i]) * orbitingStarRadii[i]; const starPos = new THREE.Vector3(star2D_X, 0, star2D_Z); applyInclinationToVector(starPos, orbitingStarInclinations[i]); orbitingStars[i].position.copy(starPos);
+                 // 8. Update positions for planets orbiting the orbiting stars
+                  for (let j = 0; j < orbitingStarPlanets[i].length; j++) { const planet2D_X = Math.cos(orbitingStarPlanetAngles[i][j]) * orbitingStarPlanetRadii[i][j]; const planet2D_Z = Math.sin(orbitingStarPlanetAngles[i][j]) * orbitingStarPlanetRadii[i][j]; const planetRelPos = new THREE.Vector3(planet2D_X, 0, planet2D_Z); applyInclinationToVector(planetRelPos, orbitingStarPlanetInclinations[i][j]); orbitingStarPlanets[i][j].position.copy(orbitingStars[i].position).add(planetRelPos); orbitingStarPlanetOrbitLines[i][j].position.copy(orbitingStars[i].position); }
+             }
 
-            // 1. Calculate Sub-System Center (Star A's position) orbiting Super Sun
-            const subSystemCenter2D_X = Math.cos(subSystemAngle) * subSystemOrbitRadius;
-            const subSystemCenter2D_Z = Math.sin(subSystemAngle) * subSystemOrbitRadius;
-            const subSystemCenterPos = new THREE.Vector3(subSystemCenter2D_X, 0, subSystemCenter2D_Z);
-            applyInclinationToVector(subSystemCenterPos, subSystemInclination);
-            starA.position.copy(subSystemCenterPos);
-
-            // 2. Calculate Star B/C relative positions (orbiting their common center at Star A's position)
-            const starB_Rel_2D_X = Math.cos(binaryInternalAngle) * binaryStarSeparation;
-            const starB_Rel_2D_Z = Math.sin(binaryInternalAngle) * binaryStarSeparation;
-            const starB_RelPos = new THREE.Vector3(starB_Rel_2D_X, 0, starB_Rel_2D_Z);
-            applyInclinationToVector(starB_RelPos, binaryInternalInclination);
-            const starC_RelPos = starB_RelPos.clone().negate();
-
-            // 3. Calculate final Star B/C positions (relative to Star A)
-            starB.position.copy(starA.position).add(starB_RelPos);
-            starC.position.copy(starA.position).add(starC_RelPos);
-
-            // 4. Update Binary Star Orbit Lines position (relative to Star A)
-            starBOrbitLine.position.copy(starA.position);
-            starCOrbitLine.position.copy(starA.position);
-
-            // 5. Update Super Sun Planet positions (orbiting 0,0,0 on inclined planes)
-            for (let i = 0; i < 6; i++) {
-                const planet2D_X = Math.cos(superSunPlanetAngles[i]) * superSunPlanetRadii[i];
-                const planet2D_Z = Math.sin(superSunPlanetAngles[i]) * superSunPlanetRadii[i];
-                const planetPos = new THREE.Vector3(planet2D_X, 0, planet2D_Z);
-                applyInclinationToVector(planetPos, superSunPlanetInclinations[i]);
-                superSunPlanets[i].position.copy(planetPos);
-            }
-
-             // 6. Update Star A Planet positions (orbiting Star A on inclined planes)
-            for (let i = 0; i < 6; i++) {
-                const planet2D_X = Math.cos(starAPlanetAngles[i]) * starAPlanetRadii[i];
-                const planet2D_Z = Math.sin(starAPlanetAngles[i]) * starAPlanetRadii[i];
-                const planetRelPos = new THREE.Vector3(planet2D_X, 0, planet2D_Z);
-                applyInclinationToVector(planetRelPos, starAPlanetInclinations[i]);
-                starAPlanets[i].position.copy(starA.position).add(planetRelPos);
-                starAPlanetOrbitLines[i].position.copy(starA.position);
-            }
-
-            // 7. Update Orbiting Star positions (orbiting 0,0,0 on inclined planes)
-            for (let i = 0; i < 3; i++) {
-                const star2D_X = Math.cos(orbitingStarAngles[i]) * orbitingStarRadii[i];
-                const star2D_Z = Math.sin(orbitingStarAngles[i]) * orbitingStarRadii[i];
-                const starPos = new THREE.Vector3(star2D_X, 0, star2D_Z);
-                applyInclinationToVector(starPos, orbitingStarInclinations[i]);
-                orbitingStars[i].position.copy(starPos);
-
-                // 8. Update positions for planets orbiting the orbiting stars
-                 for (let j = 0; j < orbitingStarPlanets[i].length; j++) {
-                     const planet2D_X = Math.cos(orbitingStarPlanetAngles[i][j]) * orbitingStarPlanetRadii[i][j];
-                     const planet2D_Z = Math.sin(orbitingStarPlanetAngles[i][j]) * orbitingStarPlanetRadii[i][j];
-                     const planetRelPos = new THREE.Vector3(planet2D_X, 0, planet2D_Z);
-                     applyInclinationToVector(planetRelPos, orbitingStarPlanetInclinations[i][j]);
-                     orbitingStarPlanets[i][j].position.copy(orbitingStars[i].position).add(planetRelPos);
-                     orbitingStarPlanetOrbitLines[i][j].position.copy(orbitingStars[i].position);
-                 }
-            }
-
-
-            // --- Apply Random Rotations ---
+            // --- Update Shooting Stars ---
             if (!isPaused && deltaTime > 0) {
-                const rotationSpeedFactor = deltaTime * 0.5;
-                const applyRandomRotation = (obj) => {
-                    const rotX = (Math.random() - 0.5) * rotationSpeedFactor;
-                    const rotY = (Math.random() - 0.5) * rotationSpeedFactor;
-                    const rotZ = (Math.random() - 0.5) * rotationSpeedFactor;
-                    obj.rotation.x += rotX;
-                    obj.rotation.y += rotY;
-                    obj.rotation.z += rotZ;
-                };
-                applyRandomRotation(superSun);
-                applyRandomRotation(starA);
-                applyRandomRotation(starB);
-                applyRandomRotation(starC);
-                superSunPlanets.forEach(applyRandomRotation);
-                starAPlanets.forEach(applyRandomRotation);
-                orbitingStars.forEach(applyRandomRotation);
-                orbitingStarPlanets.forEach(planetArray => planetArray.forEach(applyRandomRotation));
+                // Attempt to spawn new stars based on frequency
+                if (Math.random() < shootingStarFrequency) {
+                    spawnShootingStar();
+                }
+
+                // Update active stars
+                const positions = shootingStarGeometry.attributes.position.array;
+                const colors = shootingStarGeometry.attributes.color.array;
+                const alphas = shootingStarGeometry.attributes.alpha.array;
+                const sizes = shootingStarGeometry.attributes.size.array;
+
+                for (let i = 0; i < maxShootingStars; i++) {
+                    const star = shootingStarPool[i];
+                    if (star.active) {
+                        star.lifetime += deltaTime;
+                        star.position.addScaledVector(star.velocity, deltaTime);
+
+                        const index = i * 3;
+                        positions[index] = star.position.x;
+                        positions[index + 1] = star.position.y;
+                        positions[index + 2] = star.position.z;
+
+                        // *** Adjusted fade calculation: starts fading later, fades faster ***
+                        const fadeStartRatio = 0.5; // Start fading after 50% of lifetime
+                        let currentAlpha = 1.0;
+                        if (star.lifetime / star.maxLifetime > fadeStartRatio) {
+                            // Calculate fade progress only after fadeStartRatio
+                            const fadeProgress = (star.lifetime / star.maxLifetime - fadeStartRatio) / (1.0 - fadeStartRatio);
+                            currentAlpha = Math.max(0.0, 1.0 - fadeProgress);
+                        }
+                        alphas[i] = currentAlpha;
+
+
+                        // Deactivate if lifetime exceeded OR alpha is zero
+                        if (star.lifetime >= star.maxLifetime || currentAlpha <= 0.0) {
+                            star.active = false;
+                            alphas[i] = 0.0; // Ensure fully transparent
+                            sizes[i] = 0.0; // Ensure size is 0
+                            // Optionally reset position to avoid brief render at origin if reactivated immediately
+                            positions[index] = 0;
+                            positions[index + 1] = 0;
+                            positions[index + 2] = 0;
+                        }
+                    }
+                }
+                shootingStarGeometry.attributes.position.needsUpdate = true;
+                shootingStarGeometry.attributes.color.needsUpdate = true;
+                shootingStarGeometry.attributes.alpha.needsUpdate = true;
+                shootingStarGeometry.attributes.size.needsUpdate = true;
+            }
+
+
+            // Apply Random Rotations (if not paused)
+            if (!isPaused && deltaTime > 0) { /* ... (no changes needed here) ... */
+                const rotationSpeedFactor = deltaTime * 0.5; const applyRandomRotation = (obj) => { const rotX = (Math.random() - 0.5) * rotationSpeedFactor; const rotY = (Math.random() - 0.5) * rotationSpeedFactor; const rotZ = (Math.random() - 0.5) * rotationSpeedFactor; obj.rotation.x += rotX; obj.rotation.y += rotY; obj.rotation.z += rotZ; };
+                applyRandomRotation(superSun); applyRandomRotation(starA); applyRandomRotation(starB); applyRandomRotation(starC); superSunPlanets.forEach(applyRandomRotation); starAPlanets.forEach(applyRandomRotation); orbitingStars.forEach(applyRandomRotation); orbitingStarPlanets.forEach(planetArray => planetArray.forEach(applyRandomRotation));
             }
 
             // Update controls
@@ -643,6 +420,60 @@
             // Render the scene
             renderer.render(scene, camera);
         }
+
+         // Function to spawn a shooting star
+         function spawnShootingStar() {
+            // Find an inactive star in the pool
+            let star = null;
+            for (let i = 0; i < maxShootingStars; i++) {
+                if (!shootingStarPool[i].active) {
+                    star = shootingStarPool[i];
+                    star.index = i;
+                    break;
+                }
+            }
+
+            if (star) {
+                star.active = true;
+                star.lifetime = 0;
+                star.maxLifetime = Math.random() * 1.0 + 0.3; // Shorter lifetime
+
+                // Spawn closer to the camera's view frustum
+                const cameraDirection = new THREE.Vector3();
+                camera.getWorldDirection(cameraDirection);
+                const cameraPosition = camera.position;
+                const distanceInFront = 500 + Math.random() * 1000;
+                const spawnCenter = cameraPosition.clone().addScaledVector(cameraDirection, distanceInFront);
+                const randomOffset = new THREE.Vector3( (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2 ).normalize().multiplyScalar(Math.random() * 1000 + 500);
+                star.position.copy(spawnCenter).add(randomOffset);
+
+                // Velocity generally across the screen
+                const speed = 1500 + Math.random() * 1500;
+                star.velocity.set( (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2 ).normalize().multiplyScalar(speed);
+
+                // Set color
+                const color = new THREE.Color();
+                color.setHSL(Math.random(), 0.9, 0.8);
+                const colors = shootingStarGeometry.attributes.color.array;
+                const index3 = star.index * 3;
+                colors[index3] = color.r; colors[index3 + 1] = color.g; colors[index3 + 2] = color.b;
+
+                 // Set initial alpha
+                 const alphas = shootingStarGeometry.attributes.alpha.array;
+                 alphas[star.index] = 1.0;
+
+                 // Set smaller random size for "specks"
+                 const sizes = shootingStarGeometry.attributes.size.array;
+                 sizes[star.index] = Math.random() * 4 + 1; // Size between 1 and 5
+
+                 // Mark attributes for update
+                 shootingStarGeometry.attributes.position.needsUpdate = true;
+                 shootingStarGeometry.attributes.color.needsUpdate = true;
+                 shootingStarGeometry.attributes.alpha.needsUpdate = true;
+                 shootingStarGeometry.attributes.size.needsUpdate = true;
+            }
+         }
+
 
         // Start the simulation when the window is loaded
         window.onload = function() {
